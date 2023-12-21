@@ -22,10 +22,13 @@ public class PlayerMovement : MonoBehaviour
     bool readyToJump;
     public int doubleJumps = 1;
     private int doubleJumpsLeft;
-    public float crouchYScale = 0.5f; // how tall your player is while crouching (0.5f -> half as tall as normal)
-    private float startYScale;
-    //fixes bugs
     public float jumpCooldown = 0.25f;
+    public float crouchSlamForce = -10f;
+    public int crouchSlams = 1;
+    private int crouchSlamsLeft;
+    bool readyToCrouchSlam;
+    public float crouchYScale = 0.25f; // how tall your player is while crouching (0.5f -> half as tall as normal)
+    private float startYScale;
 
 
     [Header("Speed handling")]
@@ -83,8 +86,9 @@ public class PlayerMovement : MonoBehaviour
         rb.freezeRotation = true;
 
         readyToJump = true;
+        readyToCrouchSlam = true;
         
-        startYScale = transform.localScale.y;                                                                                                                        //add the speed controller and a banger movementmode function
+        startYScale = transform.localScale.y;
     }
 
     // Update is called once per frame
@@ -101,6 +105,9 @@ public class PlayerMovement : MonoBehaviour
         // if you hit the ground again after double jumping, reset your double jumps
         if (grounded && doubleJumpsLeft != doubleJumps)
             ResetDoubleJumps();
+
+        if (grounded && crouchSlamsLeft != crouchSlams)
+            ResetCrouchSlams();
     }
 
     private void DragHandler()
@@ -110,13 +117,6 @@ public class PlayerMovement : MonoBehaviour
         } else {
             rb.drag = 0;
         }
-        // // if you're walking or sprinting, apply drag to your rigidbody in order to prevent slippery movement
-        // if (mm == MovementMode.walking || mm == MovementMode.sprinting)
-        //     rb.drag = groundDrag;
-
-        // // in any other case you don't want any drag
-        // else
-        //     rb.drag = 0;
     }
 
     private void FixedUpdate()
@@ -138,27 +138,23 @@ public class PlayerMovement : MonoBehaviour
             // This will set readyToJump to true again after the cooldown is over
             Invoke(nameof(ResetJump), jumpCooldown);
         }
+        else if(Input.GetKeyDown(jumpKey) && (!grounded))
+        {
+            DoubleJump();
+        }
         // if you press the crouch key while not pressing W,A,S or D -> start crouching
         /// Note: if you are pressing W,A,S or D, the sliding script will start a slide instead
-        if (Input.GetKeyDown(crouchKey) && horizontalInput == 0 && verticalInput == 0)
+        if (Input.GetKeyDown(crouchKey) && horizontalInput == 0 && verticalInput == 0 && grounded)
             StartCrouch();
 
         // uncrouch again when you release the crouch key
         if (Input.GetKeyUp(crouchKey) && crouching)
             StopCrouch();
-
-        // // if you press the jump key while being in the air -> perform a double jump
-        // else if(Input.GetKeyDown(jumpKey) && (mm == MovementMode.air || mm == MovementMode.walljumping))
-        // {
-        //     DoubleJump();
-        // }
-
-        // if you press the jump key while being in the air -> perform a double jump
-        else if(Input.GetKeyDown(jumpKey) && (!grounded))
+        
+        if (Input.GetKeyDown(crouchKey) && !grounded && readyToCrouchSlam)
         {
-            DoubleJump();
+            CrouchSlam();
         }
-
     }
 
     private void MovePlayer()
@@ -186,6 +182,9 @@ public class PlayerMovement : MonoBehaviour
             Vector3 limitedVel = flatVel.normalized * desiredMaxSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
+        Vector3 momentum = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+        Debug.Log(momentum.magnitude);
     }
 
     #region StateMachine
@@ -270,7 +269,6 @@ public class PlayerMovement : MonoBehaviour
     /// called when crouchKey is pressed down
     private void StartCrouch()
     {
-        Debug.Log("Test");
         // shrink the player down
         transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
 
@@ -288,6 +286,23 @@ public class PlayerMovement : MonoBehaviour
         transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
 
         crouching = false;
+    }
+
+    private void ResetCrouchSlams()
+    {
+        crouchSlamsLeft = crouchSlams;
+    }
+
+    public void CrouchSlam()
+    {
+        if (crouchSlamsLeft <= 0) return;
+        // reset of y velocity
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
+        // add downward force
+        rb.AddForce(orientation.up * -crouchSlamForce, ForceMode.Impulse);
+
+        crouchSlamsLeft--;
     }
 
     #endregion

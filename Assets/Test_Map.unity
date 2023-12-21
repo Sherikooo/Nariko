@@ -2514,14 +2514,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   orientation: {fileID: 1736788877}
   playerHeight: 1
-  moveForce: 9
+  moveForce: 30
   gravity: -9.81
-  airMultiplier: 0.5
+  airMultiplier: 1
   groundDrag: 5
   jumpForce: 8
   doubleJumps: 1
-  crouchYScale: 0.5
   jumpCooldown: 0.25
+  crouchSlamForce: 10
+  crouchSlams: 1
+  crouchYScale: 0.25
   runMaxSpeed: 4
   crouchMaxSpeed: 2
   slopeSlideMaxSpeed: 30
