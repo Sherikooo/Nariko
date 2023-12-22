@@ -29,6 +29,8 @@ public class PlayerMovement : MonoBehaviour
     bool readyToCrouchSlam;
     public float crouchYScale = 0.25f; // how tall your player is while crouching (0.5f -> half as tall as normal)
     private float startYScale;
+    public float ccYScale = 0.2f;
+    private float ccStartYScale;
 
 
     [Header("Speed handling")]
@@ -50,7 +52,6 @@ public class PlayerMovement : MonoBehaviour
     };
 
 
-
     [Header("Input")]
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode crouchKey = KeyCode.LeftControl;
@@ -58,6 +59,7 @@ public class PlayerMovement : MonoBehaviour
     [Header("References")]
     private PlayerCamera cam;
     private Rigidbody rb; // the players rigidbody
+    private CapsuleCollider cc;
 
     [HideInInspector] public float horizontalInput;
     [HideInInspector] public float verticalInput;
@@ -80,6 +82,7 @@ public class PlayerMovement : MonoBehaviour
 
         rb = GetComponent<Rigidbody>();
         cam = GetComponent<PlayerCamera>();
+        cc = GetComponent<CapsuleCollider>();
 
         // freeze all rotation on the rigidbody, otherwise the player falls over
         /// (a capsule would fall over)
@@ -89,6 +92,7 @@ public class PlayerMovement : MonoBehaviour
         readyToCrouchSlam = true;
         
         startYScale = transform.localScale.y;
+        ccStartYScale = cc.height;
     }
 
     // Update is called once per frame
@@ -175,16 +179,16 @@ public class PlayerMovement : MonoBehaviour
     private void SpeedControl()
     {
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
+        Debug.Log(flatVel.magnitude);
+        Debug.Log(desiredMaxSpeed);
         //limit velocity
         if(flatVel.magnitude > desiredMaxSpeed)
         {
             Vector3 limitedVel = flatVel.normalized * desiredMaxSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
-        Vector3 momentum = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
-        Debug.Log(momentum.magnitude);
+        Debug.Log(rb.velocity.magnitude);
+        Debug.Log(".");
     }
 
     #region StateMachine
@@ -271,6 +275,8 @@ public class PlayerMovement : MonoBehaviour
     {
         // shrink the player down
         transform.localScale = new Vector3(transform.localScale.x, crouchYScale, transform.localScale.z);
+        cc.height = ccYScale;
+        
 
         // after shrinking, you'll be a bit in the air, so add downward force to hit the ground again
         /// not optimal but idk
@@ -284,7 +290,7 @@ public class PlayerMovement : MonoBehaviour
     {
         // make sure your players size is the same as before
         transform.localScale = new Vector3(transform.localScale.x, startYScale, transform.localScale.z);
-
+        cc.height = ccStartYScale;
         crouching = false;
     }
 
