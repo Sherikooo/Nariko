@@ -32,6 +32,14 @@ public class PlayerMovement : MonoBehaviour
     public float ccYScale = 0.2f;
     private float ccStartYScale;
 
+    [Header("Ghetto Rocket Jump")]
+    public float rocketForce = 40;
+    public float rocketCooldown = 1f;
+    bool readyToRocket;
+    public KeyCode leftMB = KeyCode.Mouse0;
+    private bool rocketJump;
+    public Transform camera;
+    bool momentum;
 
     [Header("Speed handling")]
     // these variables define how fast your player can move while being in the specific movemt mode
@@ -90,9 +98,13 @@ public class PlayerMovement : MonoBehaviour
 
         readyToJump = true;
         readyToCrouchSlam = true;
+        readyToRocket = true;
         
         startYScale = transform.localScale.y;
         ccStartYScale = cc.height;
+
+
+       momentum = false;                        //trash
     }
 
     // Update is called once per frame
@@ -104,7 +116,7 @@ public class PlayerMovement : MonoBehaviour
         StateHandler();
 
         // shooting a raycast down from the middle of the player and checking if it hits the ground
-        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.2f, whatIsGround);
+        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 1f, whatIsGround);
 
         // if you hit the ground again after double jumping, reset your double jumps
         if (grounded && doubleJumpsLeft != doubleJumps)
@@ -159,6 +171,19 @@ public class PlayerMovement : MonoBehaviour
         {
             CrouchSlam();
         }
+
+        rocketJump = Physics.Raycast(transform.position, camera.transform.forward, playerHeight * 1f, whatIsGround);                                    //trash
+        if (Input.GetKey(leftMB) && rocketJump && readyToRocket){
+            rb.AddForce(camera.transform.forward * -1f * rocketForce, ForceMode.Impulse);
+            desiredMaxSpeed = desiredMaxSpeed + rocketForce;
+            momentum = true;
+            readyToRocket = false;
+            Invoke(nameof(ResetRocket), rocketCooldown);
+        }
+    }
+
+    private void ResetRocket(){
+        readyToRocket = true;
     }
 
     private void MovePlayer()
@@ -179,25 +204,32 @@ public class PlayerMovement : MonoBehaviour
     private void SpeedControl()
     {
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        Debug.Log(flatVel.magnitude);
-        Debug.Log(desiredMaxSpeed);
         //limit velocity
         if(flatVel.magnitude > desiredMaxSpeed)
         {
             Vector3 limitedVel = flatVel.normalized * desiredMaxSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
-        Debug.Log(rb.velocity.magnitude);
-        Debug.Log(".");
     }
 
     #region StateMachine
 
     // Basically it just decides in which movement mode the player is currently in and sets the maxSpeed accordingly
-    MovementMode movementModeLastFrame;
-    MovementMode previousMovementMode;
     private void StateHandler()
     {   
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);                                        //trash
+        if (airMaxSpeed > flatVel.magnitude || runMaxSpeed > flatVel.magnitude){
+            momentum = false;
+        }
+        else if(desiredMaxSpeed-1f > flatVel.magnitude){ 
+            desiredMaxSpeed = flatVel.magnitude;
+        }
+        if(momentum)
+        {
+            return;
+        }
+
+
         // Mode - Crouching
         if (crouching && grounded)
         {
@@ -215,7 +247,6 @@ public class PlayerMovement : MonoBehaviour
             desiredMaxSpeed = airMaxSpeed;
         }
         
-        bool desiredMaxSpeedHasChanged = desiredMaxSpeed != desiredMaxSpeedLastFrame;
     }
 
     #endregion
