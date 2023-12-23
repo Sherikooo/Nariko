@@ -39,8 +39,9 @@ public class PlayerMovement : MonoBehaviour
     public KeyCode leftMB = KeyCode.Mouse0;
     private bool rocketJump;
     public Transform camera;
-    bool momentum;
+    bool rocketJumped;
 
+    public float vel;
     [Header("Speed handling")]
     // these variables define how fast your player can move while being in the specific movemt mode
     public float runMaxSpeed = 4f;
@@ -56,6 +57,7 @@ public class PlayerMovement : MonoBehaviour
     {
         running,
         crouching,
+        speedo,
         air
     };
 
@@ -103,17 +105,14 @@ public class PlayerMovement : MonoBehaviour
         startYScale = transform.localScale.y;
         ccStartYScale = cc.height;
 
-
-       momentum = false;                        //trash
+        rocketJumped = false;
     }
 
     // Update is called once per frame
     void Update()
     {   
-        MyInput();
-        DragHandler();
-        SpeedControl();
         StateHandler();
+        SpeedControl();
 
         // shooting a raycast down from the middle of the player and checking if it hits the ground
         grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 1f, whatIsGround);
@@ -124,6 +123,10 @@ public class PlayerMovement : MonoBehaviour
 
         if (grounded && crouchSlamsLeft != crouchSlams)
             ResetCrouchSlams();
+
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        vel = flatVel.magnitude;
+
     }
 
     private void DragHandler()
@@ -137,7 +140,10 @@ public class PlayerMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
+        MyInput();
         MovePlayer();
+        DragHandler();
+        Debug.Log(desiredMaxSpeed);
     }
 
     private void MyInput()
@@ -172,11 +178,13 @@ public class PlayerMovement : MonoBehaviour
             CrouchSlam();
         }
 
-        rocketJump = Physics.Raycast(transform.position, camera.transform.forward, playerHeight * 1f, whatIsGround);                                    //trash
+        rocketJump = Physics.Raycast(transform.position, camera.transform.forward, playerHeight * 2f, whatIsGround);                                    //trash
         if (Input.GetKey(leftMB) && rocketJump && readyToRocket){
-            rb.AddForce(camera.transform.forward * -1f * rocketForce, ForceMode.Impulse);
-            desiredMaxSpeed = desiredMaxSpeed + rocketForce;
-            momentum = true;
+            Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+            desiredMaxSpeed = flatVel.magnitude + rocketForce;
+            rb.AddForce(camera.transform.forward * -1f * rocketForce, ForceMode.Impulse);      
+            rocketJumped = true; 
+
             readyToRocket = false;
             Invoke(nameof(ResetRocket), rocketCooldown);
         }
@@ -217,21 +225,23 @@ public class PlayerMovement : MonoBehaviour
     // Basically it just decides in which movement mode the player is currently in and sets the maxSpeed accordingly
     private void StateHandler()
     {   
-        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);                                        //trash
-        if (airMaxSpeed > flatVel.magnitude || runMaxSpeed > flatVel.magnitude){
-            momentum = false;
-        }
-        else if(desiredMaxSpeed-1f > flatVel.magnitude){ 
-            desiredMaxSpeed = flatVel.magnitude;
-        }
-        if(momentum)
-        {
-            return;
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        if (desiredMaxSpeed < airMaxSpeed + 1f){
+            rocketJumped =   false;
         }
 
+        if (rocketJumped){
+            if(flatVel.magnitude < desiredMaxSpeed){
+                 desiredMaxSpeed = flatVel.magnitude;
+        } 
+        //else if(rocketJumped){
+            //desiredMaxSpeed = desiredMaxSpeed-0.001f;
+        //}
 
+
+        }
         // Mode - Crouching
-        if (crouching && grounded)
+        else if (crouching && grounded)
         {
             mm = MovementMode.crouching;
             desiredMaxSpeed = crouchMaxSpeed;
@@ -245,8 +255,7 @@ public class PlayerMovement : MonoBehaviour
         {
             mm = MovementMode.air;
             desiredMaxSpeed = airMaxSpeed;
-        }
-        
+        }   
     }
 
     #endregion
