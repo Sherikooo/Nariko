@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,7 +10,7 @@ public class PlayerMovement : MonoBehaviour
     public Transform orientation;
 
     public float playerHeight = 0.5f;
-
+    public double vel;
 
     [Header("Movement")]
     public float moveForce = 12f;
@@ -17,7 +18,8 @@ public class PlayerMovement : MonoBehaviour
     /// how much air control you have
     /// for example: airMultiplier = 0.5f -> you can only move half as fast will being in the air
     public float airMultiplier = 1f;
-    public float groundDrag = 5f;
+    public float groundDrag = 0.5f;
+    public float airDrag = 0.5f;
     public float jumpForce = 13f;
     bool readyToJump;
     public int doubleJumps = 1;
@@ -111,8 +113,8 @@ public class PlayerMovement : MonoBehaviour
     void Update()
     {   
         MyInput();
-        DragHandler();
-        SpeedControl();
+        //DragHandler();
+        //SpeedControl();
         StateHandler();
 
         // shooting a raycast down from the middle of the player and checking if it hits the ground
@@ -128,16 +130,31 @@ public class PlayerMovement : MonoBehaviour
 
     private void DragHandler()
     {
-        if(grounded){
-            rb.drag = groundDrag;
-        } else {
-            rb.drag = 0;
+        //if(grounded){
+        //    rb.drag = groundDrag;
+        //} else {
+        //    rb.drag = groundDrag;
+        //}
+        float counterVelX = -(float)((rb.velocity.x / Math.Abs(rb.velocity.x))* groundDrag * Math.Pow(rb.velocity.x, 2)) ;
+        float counterVelZ = -(float)((rb.velocity.z / Math.Abs(rb.velocity.z))* groundDrag * Math.Pow(rb.velocity.z, 2));
+        Vector3 counterVel = new Vector3(counterVelX, 0f, counterVelZ);
+        vel = Math.Sqrt(Math.Pow(rb.velocity.x, 2)  +Math.Pow(rb.velocity.z, 2)); //berechnung des Gesamtspeeds, also die länge des bewegungsvektors dafür: Wurzel von kraft in jedere Richtung zum quadrat
+
+        if (grounded)
+        {
+            rb.AddForce(counterVel , ForceMode.Force);     
+        }
+        else
+        {
+            rb.AddForce(counterVel, ForceMode.Force);
+            //rb.AddForce(camera.transform.forward * -1f * airDrag, ForceMode.Force);
         }
     }
 
     private void FixedUpdate()
     {
         MovePlayer();
+        DragHandler();
     }
 
     private void MyInput()
